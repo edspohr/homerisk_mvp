@@ -72,6 +72,7 @@ function App() {
   // Polling Effect
   useEffect(() => {
     let interval: any;
+    let errorCount = 0;
 
     if (jobId && !report) {
       interval = setInterval(async () => {
@@ -82,14 +83,22 @@ function App() {
           if (data.status === "COMPLETED") {
             setReport(data);
             setLoading(false);
-            setJobId(null); // Stop polling
+            setJobId(null);
           } else if (data.status === "FAILED") {
-            setError("El análisis falló. Por favor contacta soporte.");
+            setError("El análisis falló. Por favor intenta nuevamente.");
             setLoading(false);
             setJobId(null);
           }
+          // Reset error count on successful check
+          errorCount = 0;
         } catch (err) {
           console.error("Polling error:", err);
+          errorCount++;
+          if (errorCount > 5) {
+             setError("Error de conexión. Verifica tu internet y vuelve a intentar.");
+             setLoading(false);
+             setJobId(null);
+          }
         }
       }, POLL_INTERVAL);
     }
@@ -184,6 +193,36 @@ function App() {
                         <span className="flex items-center gap-1"><span className="text-lg">📢</span> Redes Sociales</span>
                         <span className="flex items-center gap-1"><span className="text-lg">🏛️</span> Datos Gubernamentales</span>
                         <span className="flex items-center gap-1"><span className="text-lg">💬</span> Foros Vecinales</span>
+                    </div>
+                </div>
+            </section>
+        )}
+
+        {/* How it Works Section */}
+        {!showPreview && !report && (
+            <section className="py-16 px-4 bg-white">
+                <div className="max-w-5xl mx-auto">
+                    <div className="text-center mb-12">
+                         <h2 className="text-3xl font-bold text-gray-900 mb-4">¿Cómo funciona HomeRisk?</h2>
+                         <p className="text-gray-500">Inteligencia artificial aplicada a tu seguridad inmobiliaria.</p>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-3 gap-8">
+                        <div className="text-center">
+                            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 font-bold text-indigo-700">1</div>
+                            <h3 className="font-bold text-xl mb-2">Ingresa una Dirección</h3>
+                            <p className="text-gray-500 text-sm">Validamos la ubicación exacta y detectamos el barrio.</p>
+                        </div>
+                        <div className="text-center">
+                             <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 font-bold text-indigo-700">2</div>
+                            <h3 className="font-bold text-xl mb-2">Nuestra IA Escanea la Web</h3>
+                            <p className="text-gray-500 text-sm">Buscamos noticias, reportes policiales, cortes de luz y quejas en redes sociales en tiempo real.</p>
+                        </div>
+                        <div className="text-center">
+                             <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 font-bold text-indigo-700">3</div>
+                            <h3 className="font-bold text-xl mb-2">Recibe tu Reporte</h3>
+                            <p className="text-gray-500 text-sm">Obtén un score de 1 a 10 y el detalle de cada riesgo en tu correo.</p>
+                        </div>
                     </div>
                 </div>
             </section>
