@@ -11,7 +11,7 @@ declare global {
   }
 }
 
-const AddressInput: React.FC<AddressInputProps> = ({ onAddressSelect }) => {
+const AddressInput: React.FC<AddressInputProps & { className?: string; inputClassName?: string }> = ({ onAddressSelect, className, inputClassName }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
@@ -88,13 +88,12 @@ const AddressInput: React.FC<AddressInputProps> = ({ onAddressSelect }) => {
   }, [scriptLoaded]); // Only run once when script loads
 
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700">Dirección</label>
+    <div className={className}>
       <input
         ref={inputRef}
         type="text"
-        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-        placeholder="Ingresa tu dirección..."
+        className={inputClassName || "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"}
+        placeholder="Ingresa dirección (ej: Av. Providencia 1234)..."
         required
       />
     </div>

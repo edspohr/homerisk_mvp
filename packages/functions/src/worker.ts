@@ -108,6 +108,7 @@ async function analyzeRisksWithGemini(
 
 import { onMessagePublished } from "firebase-functions/v2/pubsub";
 
+// Force deploy check
 export const worker = onMessagePublished("analysis-requests", async (event) => {
   // In v2, event.data is the PubSub message object
   const message = event.data.message;
