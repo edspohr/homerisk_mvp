@@ -24,6 +24,7 @@ function App() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [address, setAddress] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
+  const [rawAddressInput, setRawAddressInput] = useState("");
 
   const [showPreview, setShowPreview] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,6 +39,16 @@ function App() {
     setAddress(addr);
     setLocation(loc);
     if (nb) setNeighborhood(nb);
+    setShowPreview(true);
+  }, []);
+
+  // Handle manual analysis when no place is selected (fallback mode)
+  const handleManualAnalysis = React.useCallback((addressText: string) => {
+    if (addressText.length < 3) return;
+    // Use demo coordinates for Santiago center when Maps fails
+    setAddress(addressText);
+    setLocation({ lat: -33.4488897, lng: -70.6692655 });
+    setNeighborhood("Santiago Centro");
     setShowPreview(true);
   }, []);
 
@@ -159,12 +170,22 @@ function App() {
              <div className="bg-white p-2 rounded-xl shadow-2xl flex items-center">
                 <span className="pl-4 text-xl hidden sm:block">📍</span>
                 <AddressInput 
-                    onAddressSelect={handleAddressSelect} 
+                    onAddressSelect={handleAddressSelect}
+                    onInputChange={(val) => setRawAddressInput(val)}
+                    onManualSubmit={handleManualAnalysis}
                     className="flex-grow"
                     inputClassName="w-full text-gray-900 text-lg py-3 px-4 outline-none border-none placeholder-gray-400"
                 />
                  {!showPreview && !report && (
-                    <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-bold transition-colors hidden sm:block">
+                    <button 
+                        onClick={() => handleManualAnalysis(rawAddressInput)}
+                        disabled={rawAddressInput.length < 3}
+                        className={`px-6 py-3 rounded-lg font-bold transition-all hidden sm:block ${
+                            rawAddressInput.length >= 3 
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer' 
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                    >
                         Analizar
                     </button>
                  )}

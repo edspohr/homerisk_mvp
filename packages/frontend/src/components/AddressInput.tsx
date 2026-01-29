@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 
 interface AddressInputProps {
   onAddressSelect: (address: string, location: { lat: number; lng: number }, neighborhood?: string) => void;
+  onInputChange?: (value: string) => void;
+  onManualSubmit?: (value: string) => void;
 }
 
 declare global {
@@ -11,17 +13,21 @@ declare global {
   }
 }
 
-const AddressInput: React.FC<AddressInputProps & { className?: string; inputClassName?: string }> = ({ onAddressSelect, className, inputClassName }) => {
+const AddressInput: React.FC<AddressInputProps & { className?: string; inputClassName?: string }> = ({ 
+  onAddressSelect, 
+  onInputChange,
+  onManualSubmit,
+  className, 
+  inputClassName 
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [hasSelectedPlace, setHasSelectedPlace] = useState(false);
 
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  const isMockMode = !apiKey || apiKey.includes("YOUR_KEY") || apiKey === "placeholder";
+  const apiKey = "AIzaSyBaCXbou3KwRUEJbPYxu8vhRH-SxwtPAGQ";
 
   useEffect(() => {
-    if (isMockMode) return;
-
     if (window.google?.maps?.places) {
       setScriptLoaded(true);
       return;
@@ -33,16 +39,14 @@ const AddressInput: React.FC<AddressInputProps & { className?: string; inputClas
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
       script.async = true;
       script.onload = () => setScriptLoaded(true);
+      script.onerror = () => console.warn("Google Maps script failed to load");
       document.body.appendChild(script);
     } else {
       setScriptLoaded(true);
     }
-  }, [apiKey, isMockMode]);
+  }, [apiKey]);
 
-  // Use a ref for the callback to prevent effect re-triggering
   const onAddressSelectRef = useRef(onAddressSelect);
-
-  // Update ref when prop changes
   useEffect(() => {
     onAddressSelectRef.current = onAddressSelect;
   }, [onAddressSelect]);
@@ -50,60 +54,60 @@ const AddressInput: React.FC<AddressInputProps & { className?: string; inputClas
   const autocompleteInstance = useRef<any>(null);
 
   useEffect(() => {
-    if (isMockMode) return;
+    if (scriptLoaded && inputRef.current && !autocompleteInstance.current && window.google?.maps?.places) {
+      try {
+        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+          types: ["geocode"],
+          componentRestrictions: { country: "cl" }, 
+          fields: ["formatted_address", "geometry", "address_components"],
+        });
 
-    if (scriptLoaded && inputRef.current && !autocompleteInstance.current) {
-      
-      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-        types: ["geocode"],
-        componentRestrictions: { country: "cl" }, 
-        fields: ["formatted_address", "geometry", "address_components"],
-      });
+        autocompleteInstance.current = autocomplete;
 
-      autocompleteInstance.current = autocomplete;
-
-      const listener = autocomplete.addListener("place_changed", () => {
-        const place = autocomplete.getPlace();
-        if (place.geometry && place.geometry.location) {
-          
-          // Extract neighborhood logic
-          let neighborhood = "";
-          if (place.address_components) {
+        const listener = autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          if (place.geometry && place.geometry.location) {
+            let neighborhood = "";
+            if (place.address_components) {
               const findComponent = (type: string) => place.address_components.find((c: any) => c.types.includes(type));
               const nbComponent = findComponent("neighborhood") || findComponent("sublocality") || findComponent("administrative_area_level_2");
               if (nbComponent) neighborhood = nbComponent.long_name;
-          }
-
-          // Call the latest callback
-          if (onAddressSelectRef.current) {
-               onAddressSelectRef.current(place.formatted_address || "", {
+            }
+            setHasSelectedPlace(true);
+            if (onAddressSelectRef.current) {
+              onAddressSelectRef.current(place.formatted_address || "", {
                 lat: place.geometry.location.lat(),
                 lng: place.geometry.location.lng(),
               }, neighborhood);
+            }
           }
-        }
-      });
-      
-      // Cleanup listener
-      return () => {
-          if (window.google && window.google.maps && window.google.maps.event) {
-              window.google.maps.event.removeListener(listener);
+        });
+        
+        return () => {
+          if (window.google?.maps?.event) {
+            window.google.maps.event.removeListener(listener);
           }
-      };
-    }
-  }, [scriptLoaded, isMockMode]); 
-
-  // Handle Mock Mode Input
-  const handleMockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setInputValue(e.target.value);
-      // Simulate selection immediately for smooth UX, or wait for blur
-      // Let's do it immediately so "Analizar" button enables
-      if (onAddressSelectRef.current && e.target.value.length > 3) {
-           onAddressSelectRef.current(e.target.value, {
-               lat: -33.4488897, // Santiago Center Mock
-               lng: -70.6692655
-           }, "Barrio Demo");
+        };
+      } catch (e) {
+        console.warn("Google Maps Autocomplete initialization failed:", e);
       }
+    }
+  }, [scriptLoaded]); 
+
+  // Handle input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputValue(value);
+    setHasSelectedPlace(false);
+    onInputChange?.(value);
+  };
+
+  // Handle Enter key for manual submission
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && inputValue.length > 3 && !hasSelectedPlace) {
+      e.preventDefault();
+      onManualSubmit?.(inputValue);
+    }
   };
 
   return (
@@ -112,14 +116,15 @@ const AddressInput: React.FC<AddressInputProps & { className?: string; inputClas
         ref={inputRef}
         type="text"
         className={inputClassName || "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"}
-        placeholder={isMockMode ? "Ingresa dirección (Modo Demo)..." : "Ingresa dirección (ej: Av. Providencia 1234)..."}
+        placeholder="Ingresa dirección (ej: Av. Providencia 1234)..."
         required
-        value={isMockMode ? inputValue : undefined} // Controlled in mock mode, uncontrolled (ref) in Maps mode
-        onChange={isMockMode ? handleMockChange : undefined}
+        value={inputValue}
+        onChange={handleInputChange}
+        onKeyDown={handleKeyDown}
       />
-      {isMockMode && <p className="text-xs text-indigo-200 mt-1 ml-1">* Modo Demo (Sin Google Maps API)</p>}
     </div>
   );
 };
 
 export default AddressInput;
+

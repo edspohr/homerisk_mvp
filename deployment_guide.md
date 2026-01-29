@@ -138,3 +138,51 @@ Si usas Google API Gateway para proteger tus funciones:
 
 - **El worker no procesa**:
   Revisa los logs en la consola de GCP (Cloud Run Functions -> Logs). Puede que falten las API Keys de SerpApi o Vertex AI en las "Variables de Entorno" de la función (se configuran en la consola de GCP o en `firebase-functions` secrets).
+
+---
+
+## 6. Obtención y Configuración de API Keys (Para Producción Real)
+
+Para que la aplicación funcione con datos reales y no en "Modo Demo", necesitas configurar las siguientes llaves:
+
+### A. Google Maps API Key (Frontend)
+
+Necesaria para el autocompletado de direcciones y mapas.
+
+1.  Ve a [Google Cloud Console](https://console.cloud.google.com/).
+2.  Selecciona tu proyecto (`homerisk-fb567`).
+3.  Ve a **APIs & Services > Credentials**.
+4.  Haz clic en **Create Credentials > API Key**.
+5.  (Recomendado) Restringe la llave para uso web (`HTTP Referrers`) y añade tu dominio: `homerisk-fb567.web.app`.
+6.  Habilita las siguientes APIs en **Library**:
+    - Places API (New) o Places API (Legacy).
+    - Maps JavaScript API.
+7.  **Dónde ponerla:**
+    - En tu máquina local, edita `packages/frontend/.env` (o crea `.env.production`).
+    - Añade: `VITE_GOOGLE_MAPS_API_KEY=tu_llave_aqui`
+    - Ejecuta `npm run build` y `firebase deploy --only hosting`.
+
+### B. SerpApi Key (Backend - Worker)
+
+Necesaria para buscar noticias y datos de delincuencia en tiempo real en Google.
+
+1.  Regístrate en [SerpApi.com](https://serpapi.com/).
+2.  Obtén tu **Private API Key** del dashboard.
+3.  **Dónde ponerla:**
+    - Opción 1 (Consola): Ve a Google Cloud Console -> Cloud Run Functions -> selecciona `worker` -> Edit -> Runtime variables -> Add Variable.
+      - Name: `SERPAPI_KEY`
+      - Value: `tu_llave_serpapi`
+    - Opción 2 (CLI):
+      ```bash
+      firebase functions:config:set services.serpapi_key="tu_llave"
+      # Nota: Requiere actualizar el código para usar functions.config() o usar secrets
+      ```
+    - **Recomendado hoy:** Configúrala directo en la consola de GCP para la función `worker`.
+
+### C. Vertex AI (Backend - Worker)
+
+Ya debería estar activo si habilitaste las APIs de GCP, pero confirma:
+
+1.  En Google Cloud Console, busca "Vertex AI API".
+2.  Asegúrate de que esté **Enable**.
+3.  La función usa las credenciales por defecto del proyecto, no requiere Key extra, solo permisos (que ya tiene por defecto en Firebase Functions).
