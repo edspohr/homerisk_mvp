@@ -1,6 +1,6 @@
-import * as functions from "firebase-functions";
+
 import { db, REPORTS_COLLECTION } from "./firebase";
-import { RiskReport, RiskAnalysis } from "@homerisk/common";
+import { RiskAnalysis } from "@homerisk/common";
 import { getJson } from "serpapi";
 import { VertexAI } from "@google-cloud/vertexai";
 import * as dotenv from "dotenv";
@@ -103,8 +103,29 @@ async function analyzeRisksWithGemini(
   }
 }
 
-export const worker = functions.pubsub.topic("analysis-requests").onPublish(async (message) => {
-  const data = message.json;
+import { onMessagePublished } from "firebase-functions/v2/pubsub";
+
+export const worker = onMessagePublished("analysis-requests", async (event) => {
+  // In v2, event.data is the PubSub message object
+  const message = event.data.message;
+  // .json helper might not exist directly on V2 message, usually it is just .json if compiled correctly or we parse .data string.
+  // Actually event.data.message has properties.
+  // Let's use robust parsing.
+  let data: any; 
+  try {
+     data = message.json;
+  } catch (e) {
+     // If .json getter fails or doesn't exist, try decoding base64
+     if (message.data) {
+        data = JSON.parse(Buffer.from(message.data, 'base64').toString());
+     }
+  }
+
+  if (!data) {
+      console.error("No data found in message");
+      return;
+  }
+
   const { jobId, address, email } = data;
 
   console.log(`Processing job ${jobId} for address: ${address}`);

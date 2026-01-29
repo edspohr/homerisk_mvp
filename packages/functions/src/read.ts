@@ -1,11 +1,11 @@
-import * as functions from "firebase-functions";
-import * as cors from "cors";
+import { onRequest } from "firebase-functions/v2/https";
+import cors from "cors";
 import { db, REPORTS_COLLECTION } from "./firebase";
 import { RiskReport } from "@homerisk/common";
 
 const corsHandler = cors({ origin: true });
 
-export const read = functions.https.onRequest(async (req, res) => {
+export const read = onRequest(async (req, res) => {
   corsHandler(req, res, async () => {
     try {
       if (req.method !== "GET") {
