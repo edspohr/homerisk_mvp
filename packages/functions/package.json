@@ -16,7 +16,7 @@
   "dependencies": {
     "@google-cloud/pubsub": "^4.0.0",
     "@google-cloud/vertexai": "^0.4.0",
-    "@homerisk/common": "file:./homerisk-common-1.0.0.tgz",
+    "@homerisk/common": "file:homerisk-common-1.0.0.tgz",
     "@types/nodemailer": "^7.0.9",
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",

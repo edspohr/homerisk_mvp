@@ -14,7 +14,7 @@ export const ingest = onRequest(async (req, res) => {
         return;
       }
 
-      const { address, email, location } = req.body;
+      const { address, email, name, phone, location } = req.body;
 
       if (!address || !location || !location.lat || !location.lng) {
         res.status(400).json({ error: "Missing required fields: address, location { lat, lng }" });
@@ -51,6 +51,8 @@ export const ingest = onRequest(async (req, res) => {
           source: req.body.source || "WEB_B2C",
           timestamp: new Date().toISOString(),
           email: email,
+          name: name,
+          phone: phone,
         },
         location_data: {
           address_input: address,

@@ -19,6 +19,8 @@ const HABITABILITY_DIMENSIONS = [
 
 function App() {
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [address, setAddress] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
@@ -58,7 +60,7 @@ function App() {
     setReport(null);
 
     try {
-      const res = await api.submitAnalysis(address, email, location, neighborhood);
+      const res = await api.submitAnalysis(address, email, location, neighborhood, name, phone);
       setJobId(res.job_id);
     } catch (err) {
       console.error(err);
@@ -254,6 +256,24 @@ function App() {
                                       <p className="text-gray-600 mb-6 text-sm">Obtén el detalle de incidentes, cortes recientes y la calidad real de servicios en tu correo.</p>
                                       
                                       <form onSubmit={handleSubmit} className="space-y-4">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                              <input 
+                                                  type="text" 
+                                                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-lg"
+                                                  placeholder="Tu Nombre"
+                                                  value={name}
+                                                  onChange={(e) => setName(e.target.value)}
+                                                  required
+                                              />
+                                              <input 
+                                                  type="tel" 
+                                                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-lg"
+                                                  placeholder="Teléfono (+569...)"
+                                                  value={phone}
+                                                  onChange={(e) => setPhone(e.target.value)}
+                                                  required
+                                              />
+                                          </div>
                                           <input 
                                               type="email" 
                                               className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-lg"

@@ -6,10 +6,12 @@ import { RiskReport } from "@homerisk/common";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://us-central1-homerisk-fb567.cloudfunctions.net";
 
 export const api = {
-  submitAnalysis: async (address: string, email: string, location: { lat: number, lng: number }, neighborhood?: string) => {
+  submitAnalysis: async (address: string, email: string, location: { lat: number, lng: number }, neighborhood?: string, name?: string, phone?: string) => {
     const response = await axios.post<{ job_id: string; status: string }>(`${API_BASE_URL}/submit-analysis`, {
       address,
       email,
+      name,
+      phone,
       location,
       neighborhood,
     });

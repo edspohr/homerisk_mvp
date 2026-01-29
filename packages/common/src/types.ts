@@ -38,6 +38,8 @@ export interface RiskReport {
     source: "B2B_API" | "WEB_B2C";
     timestamp: string; // ISO Date
     email?: string;
+    name?: string;
+    phone?: string;
   };
   location_data: LocationData;
   risk_analysis?: RiskAnalysis;
