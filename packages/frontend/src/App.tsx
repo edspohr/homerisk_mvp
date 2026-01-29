@@ -111,7 +111,22 @@ function App() {
       
       {/* Hero Section */}
       <header className={`relative bg-gradient-to-br from-indigo-900 via-blue-900 to-indigo-800 text-white transition-all duration-500 ${showPreview || report ? "py-12" : "py-24 md:py-32"} px-4`}>
-        <div className="max-w-4xl mx-auto text-center z-10 relative">
+        {/* Navigation Bar */}
+        <nav className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-50">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={resetSearch}>
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-indigo-900 font-bold text-xl shadow-lg">H</div>
+                <span className="text-xl md:text-2xl font-bold tracking-tight text-white hover:opacity-90 transition-opacity">HomeRisk AI</span>
+            </div>
+            <div className="hidden md:flex gap-8 text-sm font-medium text-blue-100">
+                <a href="#" className="hover:text-white transition-colors">Cómo funciona</a>
+                <a href="#pricing" className="hover:text-white transition-colors">Planes</a>
+                <a href="mailto:partners@homerisk.com" className="hover:text-white transition-colors">Para Corredores</a>
+            </div>
+            {/* Mobile Menu - Simplified for MVP */}
+            <a href="#pricing" className="md:hidden text-sm font-bold text-blue-200 hover:text-white transition-colors">Planes</a>
+        </nav>
+
+        <div className="max-w-4xl mx-auto text-center z-10 relative mt-10">
           {!showPreview && !report ? (
              <>
               <h1 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight leading-tight animate-fade-in-up">
