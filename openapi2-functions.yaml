@@ -1,0 +1,63 @@
+swagger: "2.0"
+info:
+  title: HomeRisk API
+  description: API for accessing HomeRisk Analysis Reports
+  version: 1.0.0
+schemes:
+  - https
+produces:
+  - application/json
+paths:
+  /submit-analysis:
+    post:
+      summary: Submit a new location for risk analysis
+      operationId: submitAnalysis
+      x-google-backend:
+        address: https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/ingest
+      parameters:
+        - in: body
+          name: body
+          description: Location data
+          required: true
+          schema:
+            type: object
+            properties:
+              address:
+                type: string
+              email:
+                type: string
+              location:
+                type: object
+                properties:
+                  lat:
+                    type: number
+                  lng:
+                    type: number
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            type: object
+            properties:
+              job_id:
+                type: string
+              status:
+                type: string
+  /report/{job_id}:
+    get:
+      summary: Get analysis report by Job ID
+      operationId: getReport
+      x-google-backend:
+        address: https://us-central1-YOUR_PROJECT_ID.cloudfunctions.net/read
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          type: string
+      responses:
+        "200":
+          description: Success
+          schema:
+            type: object
+        "404":
+          description: Not Found
