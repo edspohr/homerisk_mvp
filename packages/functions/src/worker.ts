@@ -15,13 +15,15 @@ const PROJECT_ID = process.env.GCP_PROJECT_ID;
 const LOCATION = process.env.VERTEX_AI_LOCATION || "us-central1";
 const MODEL_NAME = "gemini-pro";
 
-async function searchAddressRisks(address: string) {
-  // Simplified neighbourhood logic for MVP: just use the address string provided
-  // In a real app we'd reverse geocode or extract neighborhood from Places API data
+async function searchAddressRisks(address: string, neighborhood?: string) {
+  // Use neighborhood for broader search context if available
+  const context = neighborhood ? `${neighborhood}, ${address}` : address;
   const queries = [
-    `Cortes de luz ${address} problemas electricos`,
-    `Inundaciones anegamientos ${address} historial lluvia`,
-    `Seguridad robos delincuencia ${address} policial`,
+    `Cortes de luz ${context} problemas electricos`,
+    `Inundaciones anegamientos ${context} historial lluvia`,
+    `Seguridad robos delincuencia ${context} policial`,
+    // Broad search for neighborhood specifically if available
+    ...(neighborhood ? [`Delincuencia en barrio ${neighborhood} seguridad`, `Cortes de agua en ${neighborhood}`] : [])
   ];
 
   const allSnippets: string[] = [];
@@ -98,7 +100,8 @@ async function analyzeRisksWithGemini(
     }
     return null;
   } catch (error) {
-    console.error("Gemini Error:", error);
+    console.error("Gemini Error or JSON Parse Error:", error);
+    // Returning null here causes the worker to mark status as FAILED, preventing infinite retries.
     return null;
   }
 }
@@ -136,7 +139,12 @@ export const worker = onMessagePublished("analysis-requests", async (event) => {
     await reportRef.update({ status: "PROCESSING" });
 
     // 1. Gather Data
-    const snippets = await searchAddressRisks(address);
+    // Fetch full request data to get neighborhood if available
+    const docSnap = await reportRef.get();
+    const docData = docSnap.data();
+    const neighborhood = docData?.location_data?.neighborhood || "";
+
+    const snippets = await searchAddressRisks(address, neighborhood);
     let analysis: RiskAnalysis | null = null;
 
     if (snippets.length > 0) {

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
 interface AddressInputProps {
-  onAddressSelect: (address: string, location: { lat: number; lng: number }) => void;
+  onAddressSelect: (address: string, location: { lat: number; lng: number }, neighborhood?: string) => void;
 }
 
 declare global {
@@ -17,50 +17,75 @@ const AddressInput: React.FC<AddressInputProps> = ({ onAddressSelect }) => {
 
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-      console.warn("VITE_GOOGLE_MAPS_API_KEY is missing. Autocomplete will not work.");
-      return;
-    }
-
+    if (!apiKey) return;
     if (window.google?.maps?.places) {
       setScriptLoaded(true);
       return;
     }
-
-    if (!document.querySelector("#google-maps-script")) {
+    const existingScript = document.getElementById("google-maps-script");
+    if (!existingScript) {
       const script = document.createElement("script");
       script.id = "google-maps-script";
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
       script.async = true;
-      script.defer = true;
       script.onload = () => setScriptLoaded(true);
-      document.head.appendChild(script);
+      document.body.appendChild(script);
     } else {
-        // If script is already loading but not ready
-        const script = document.querySelector("#google-maps-script") as HTMLScriptElement;
-        script.addEventListener('load', () => setScriptLoaded(true));
+      setScriptLoaded(true);
     }
   }, []);
 
+  // Use a ref for the callback to prevent effect re-triggering
+  const onAddressSelectRef = useRef(onAddressSelect);
+
+  // Update ref when prop changes
   useEffect(() => {
-    if (scriptLoaded && inputRef.current) {
+    onAddressSelectRef.current = onAddressSelect;
+  }, [onAddressSelect]);
+
+  const autocompleteInstance = useRef<any>(null);
+
+  useEffect(() => {
+    if (scriptLoaded && inputRef.current && !autocompleteInstance.current) {
+      
       const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
         types: ["geocode"],
-        componentRestrictions: { country: "cl" }, // Restrict to Chile for MVP or remove for global
-        fields: ["formatted_address", "geometry"],
+        componentRestrictions: { country: "cl" }, 
+        fields: ["formatted_address", "geometry", "address_components"],
       });
 
-      autocomplete.addListener("place_changed", () => {
+      autocompleteInstance.current = autocomplete;
+
+      const listener = autocomplete.addListener("place_changed", () => {
         const place = autocomplete.getPlace();
         if (place.geometry && place.geometry.location) {
-          onAddressSelect(place.formatted_address, {
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-          });
+          
+          // Extract neighborhood logic
+          let neighborhood = "";
+          if (place.address_components) {
+              const findComponent = (type: string) => place.address_components.find((c: any) => c.types.includes(type));
+              const nbComponent = findComponent("neighborhood") || findComponent("sublocality") || findComponent("administrative_area_level_2");
+              if (nbComponent) neighborhood = nbComponent.long_name;
+          }
+
+          // Call the latest callback
+          if (onAddressSelectRef.current) {
+               onAddressSelectRef.current(place.formatted_address || "", {
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng(),
+              }, neighborhood);
+          }
         }
       });
+      
+      // Cleanup listener
+      return () => {
+          if (window.google && window.google.maps && window.google.maps.event) {
+              window.google.maps.event.removeListener(listener);
+          }
+      };
     }
-  }, [scriptLoaded, onAddressSelect]);
+  }, [scriptLoaded]); // Only run once when script loads
 
   return (
     <div>

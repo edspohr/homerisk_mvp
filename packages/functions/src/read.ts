@@ -3,7 +3,7 @@ import cors from "cors";
 import { db, REPORTS_COLLECTION } from "./firebase";
 import { RiskReport } from "@homerisk/common";
 
-const corsHandler = cors({ origin: true });
+const corsHandler = cors({ origin: ["http://localhost:5173", "https://homerisk-fb567.web.app"] });
 
 export const read = onRequest(async (req, res) => {
   corsHandler(req, res, async () => {

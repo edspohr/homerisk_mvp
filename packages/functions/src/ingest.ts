@@ -3,7 +3,8 @@ import cors from "cors";
 import { db, pubsub, ANALYSIS_TOPIC, REPORTS_COLLECTION, generateJobId } from "./firebase";
 import { RiskReport } from "@homerisk/common";
 
-const corsHandler = cors({ origin: true });
+// TODO: Update origins for production
+const corsHandler = cors({ origin: ["http://localhost:5173", "https://homerisk-fb567.web.app"] });
 
 export const ingest = onRequest(async (req, res) => {
   corsHandler(req, res, async () => {
@@ -24,13 +25,22 @@ export const ingest = onRequest(async (req, res) => {
       const reportRef = db.collection(REPORTS_COLLECTION).doc(jobId);
       const doc = await reportRef.get();
 
-      // Check if report exists (Cache Logic - Fast Path)
+      // Cache Logic
       if (doc.exists) {
         const data = doc.data() as RiskReport;
-        // If completed or processing, return existing job_id
-        // (For MVP we can assume data doesn't expire immediately, or add check here)
-        res.status(200).json({ job_id: jobId, status: data.status, message: "Request already exists" });
-        return;
+        
+        // Calculate age in days
+        const CACHE_TTL_DAYS = 30;
+        const now = new Date().getTime();
+        const createdAt = new Date(data.created_at).getTime();
+        const daysDiff = (now - createdAt) / (1000 * 3600 * 24);
+
+        if (daysDiff < CACHE_TTL_DAYS) {
+             res.status(200).json({ job_id: jobId, status: data.status, message: "Request already exists (Cached)" });
+             return;
+        }
+        // If older than 30 days, we proceed to overwrite/refresh
+         console.log(`Cache expired for ${jobId} (Age: ${daysDiff.toFixed(1)} days). Refreshing...`);
       }
 
       // Create new Pending Report
@@ -44,7 +54,7 @@ export const ingest = onRequest(async (req, res) => {
         },
         location_data: {
           address_input: address,
-          neighborhood: "", // Will be filled by Worker or client can send it
+          neighborhood: req.body.neighborhood || "",
           geo: location,
         },
         created_at: new Date().toISOString(),
