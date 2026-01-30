@@ -4,7 +4,7 @@ import { db, pubsub, ANALYSIS_TOPIC, REPORTS_COLLECTION, generateJobId } from ".
 import { RiskReport } from "@homerisk/common";
 
 // TODO: Update origins for production
-const corsHandler = cors({ origin: ["http://localhost:5173", "https://homerisk-fb567.web.app"] });
+const corsHandler = cors({ origin: true });
 
 export const ingest = onRequest(async (req, res) => {
   corsHandler(req, res, async () => {
@@ -16,7 +16,7 @@ export const ingest = onRequest(async (req, res) => {
 
       const { address, email, name, phone, location } = req.body;
 
-      if (!address || !location || !location.lat || !location.lng) {
+      if (!address || !location || location.lat === undefined || location.lng === undefined) {
         res.status(400).json({ error: "Missing required fields: address, location { lat, lng }" });
         return;
       }

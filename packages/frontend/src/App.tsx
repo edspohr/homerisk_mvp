@@ -24,45 +24,44 @@ function App() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [address, setAddress] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
-  const [rawAddressInput, setRawAddressInput] = useState("");
-
-  const [showPreview, setShowPreview] = useState(false);
+  
   const [loading, setLoading] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [report, setReport] = useState<RiskReport | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Scroll ref to auto-scroll to preview
-  const previewRef = useRef<HTMLDivElement>(null);
+  // Scroll ref to auto-scroll to report
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const handleAddressSelect = React.useCallback((addr: string, loc: { lat: number; lng: number }, nb?: string) => {
     setAddress(addr);
     setLocation(loc);
     if (nb) setNeighborhood(nb);
-    setShowPreview(true);
   }, []);
 
-  // Handle manual analysis when no place is selected (fallback mode)
+  // Handle manual analysis fallback
   const handleManualAnalysis = React.useCallback((addressText: string) => {
     if (addressText.length < 3) return;
-    // Use demo coordinates for Santiago center when Maps fails
     setAddress(addressText);
-    setLocation({ lat: -33.4488897, lng: -70.6692655 });
+    setLocation({ lat: -33.4488897, lng: -70.6692655 }); // Default/Fallback coords
     setNeighborhood("Santiago Centro");
-    setShowPreview(true);
   }, []);
 
-  // Auto-scroll to preview when it appears
+  // Auto-scroll to report when it appears
   useEffect(() => {
-    if (showPreview && previewRef.current) {
-      previewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (report && reportRef.current) {
+      reportRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [showPreview]);
+  }, [report]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!location || !address) {
+    if (!location && !address) {
       setError("Por favor selecciona una dirección válida.");
+      return;
+    }
+    if (!email || !name) {
+      setError("Por favor completa tu nombre y email.");
       return;
     }
 
@@ -70,8 +69,26 @@ function App() {
     setError(null);
     setReport(null);
 
+    let finalLocation = location;
+    let finalNeighborhood = neighborhood;
+
+    // Fallback if user didn't select from dropdown (e.g. Maps failed)
+    if (!finalLocation && address.length > 3) {
+        finalLocation = { lat: -33.4488897, lng: -70.6692655 }; // Default Santiago
+        finalNeighborhood = "Santiago Centro";
+    }
+
+    if (!finalLocation) {
+        setError("Por favor selecciona una dirección válida del listado.");
+        return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setReport(null);
+
     try {
-      const res = await api.submitAnalysis(address, email, location, neighborhood, name, phone);
+      const res = await api.submitAnalysis(address, email, finalLocation, finalNeighborhood, name, phone);
       setJobId(res.job_id);
     } catch (err) {
       console.error(err);
@@ -100,7 +117,6 @@ function App() {
             setLoading(false);
             setJobId(null);
           }
-          // Reset error count on successful check
           errorCount = 0;
         } catch (err) {
           console.error("Polling error:", err);
@@ -122,15 +138,17 @@ function App() {
     setAddress("");
     setLocation(null);
     setEmail("");
-    setShowPreview(false);
+    setName("");
+    setPhone("");
     setJobId(null);
+    setNeighborhood("");
   }
 
   return (
     <div className="min-h-screen flex flex-col font-sans text-gray-900 overflow-x-hidden">
       
       {/* Hero Section */}
-      <header className={`relative bg-gradient-to-br from-indigo-900 via-blue-900 to-indigo-800 text-white transition-all duration-500 ${showPreview || report ? "py-12" : "py-24 md:py-32"} px-4`}>
+      <header className={`relative bg-gradient-to-br from-indigo-900 via-blue-900 to-indigo-800 text-white transition-all duration-500 ${report ? "py-12" : "py-20 md:py-28"} px-4`}>
         {/* Navigation Bar */}
         <nav className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-50">
             <div className="flex items-center gap-2 cursor-pointer" onClick={resetSearch}>
@@ -138,59 +156,97 @@ function App() {
                 <span className="text-xl md:text-2xl font-bold tracking-tight text-white hover:opacity-90 transition-opacity">HomeRisk AI</span>
             </div>
             <div className="hidden md:flex gap-8 text-sm font-medium text-blue-100">
-                <a href="#" className="hover:text-white transition-colors">Cómo funciona</a>
                 <a href="#pricing" className="hover:text-white transition-colors">Planes</a>
-                <a href="mailto:partners@homerisk.com" className="hover:text-white transition-colors">Para Corredores</a>
+                <a href="#api" className="hover:text-white transition-colors">API</a>
+                <a href="#contact" className="hover:text-white transition-colors">Contacto</a>
             </div>
-            {/* Mobile Menu - Simplified for MVP */}
-            <a href="#pricing" className="md:hidden text-sm font-bold text-blue-200 hover:text-white transition-colors">Planes</a>
         </nav>
 
-        <div className="max-w-4xl mx-auto text-center z-10 relative mt-10">
-          {!showPreview && !report ? (
+        <div className="max-w-4xl mx-auto text-center z-10 relative mt-8">
+          {!report ? (
              <>
               <h1 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight leading-tight animate-fade-in-up">
-                Descubre la realidad oculta <br className="hidden md:block" /> de tu próxima propiedad.
+                Analiza el riesgo de <br className="hidden md:block" /> tu próxima propiedad.
               </h1>
               <p className="text-xl md:text-2xl text-blue-100 mb-10 font-light max-w-2xl mx-auto animate-fade-in-up delay-100">
-                No compres a ciegas. Analizamos cortes de luz, delincuencia, ruidos molestos, planes reguladores y conectividad en segundos.
+                Obtén un reporte completo de seguridad, cortes de luz y servicios al instante.
               </p>
+
+              {/* Unified Search Form */}
+              <div className="max-w-xl mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-2xl animate-fade-in-up delay-200 text-left">
+                  <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Comienza tu análisis gratuito</h3>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                      <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 ml-1">Dirección</label>
+                          <div className="bg-gray-50 rounded-lg p-1 border border-gray-200 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition-all">
+                              <AddressInput 
+                                  onAddressSelect={handleAddressSelect}
+                                  onInputChange={(_) => {}} 
+                                  onManualSubmit={handleManualAnalysis}
+                                  className="w-full"
+                                  inputClassName="w-full bg-transparent text-gray-900 px-3 py-2 outline-none placeholder-gray-400"
+                              />
+                          </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 ml-1">Tu Nombre</label>
+                              <input 
+                                  type="text" 
+                                  className="w-full bg-gray-50 rounded-lg border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
+                                  placeholder="Ej: Juan Pérez"
+                                  value={name}
+                                  onChange={(e) => setName(e.target.value)}
+                                  required
+                              />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 ml-1">Tu Email</label>
+                              <input 
+                                  type="email" 
+                                  className="w-full bg-gray-50 rounded-lg border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900"
+                                  placeholder="juan@email.com"
+                                  value={email}
+                                  onChange={(e) => setEmail(e.target.value)}
+                                  required
+                              />
+                          </div>
+                      </div>
+
+                      {error && <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm">{error}</div>}
+
+                      <button 
+                          type="submit" 
+                          disabled={loading || !address}
+                          className={`w-full py-4 rounded-xl font-bold text-lg text-white shadow-lg transform transition-all active:scale-95 ${
+                              loading || !address
+                              ? 'bg-indigo-300 cursor-not-allowed' 
+                              : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-xl'
+                          }`}
+                      >
+                          {loading ? (
+                              <span className="flex items-center justify-center gap-2">
+                                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Analizando...
+                              </span>
+                          ) : "Analizar Propiedad"}
+                      </button>
+                      <p className="text-xs text-center text-gray-400">Tus datos están seguros. Recibirás el reporte en pantalla y por email.</p>
+                  </form>
+              </div>
              </>
           ) : (
             <div className="mb-6 animate-fade-in">
                  <button onClick={resetSearch} className="text-blue-200 hover:text-white mb-2 text-sm flex items-center justify-center gap-1 mx-auto transition-colors">
                     ← Nueva Búsqueda
                  </button>
-                 <h2 className="text-2xl md:text-3xl font-bold">Análisis para: {address}</h2>
+                 <h2 className="text-2xl md:text-3xl font-bold">Reporte para: {address}</h2>
             </div>
           )}
-
-          {/* Search Bar Container */}
-          <div className={`${showPreview || report ? "max-w-xl" : "max-w-2xl"} mx-auto transform transition-all duration-500 hover:scale-105`}>
-             <div className="bg-white p-2 rounded-xl shadow-2xl flex items-center">
-                <span className="pl-4 text-xl hidden sm:block">📍</span>
-                <AddressInput 
-                    onAddressSelect={handleAddressSelect}
-                    onInputChange={(val) => setRawAddressInput(val)}
-                    onManualSubmit={handleManualAnalysis}
-                    className="flex-grow"
-                    inputClassName="w-full text-gray-900 text-lg py-3 px-4 outline-none border-none placeholder-gray-400"
-                />
-                 {!showPreview && !report && (
-                    <button 
-                        onClick={() => handleManualAnalysis(rawAddressInput)}
-                        disabled={rawAddressInput.length < 3}
-                        className={`px-6 py-3 rounded-lg font-bold transition-all hidden sm:block ${
-                            rawAddressInput.length >= 3 
-                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer' 
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                    >
-                        Analizar
-                    </button>
-                 )}
-             </div>
-          </div>
         </div>
         
         {/* Abstract Background Shapes */}
@@ -204,57 +260,24 @@ function App() {
       <main className="flex-grow">
         
         {/* Trust Signals Strip */}
+        <section className="bg-slate-50 border-b border-gray-200 py-4 px-4 overflow-hidden">
+            <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-center gap-4 text-sm text-gray-500">
+                <span className="font-semibold uppercase tracking-wide text-xs">Nuestra IA analiza 24/7:</span>
+                <div className="flex flex-wrap justify-center gap-6 opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
+                    <span className="flex items-center gap-1"><span className="text-lg">⚡</span> Cortes de Luz</span>
+                    <span className="flex items-center gap-1"><span className="text-lg">🚓</span> Seguridad</span>
+                    <span className="flex items-center gap-1"><span className="text-lg">🌊</span> Riesgos Naturales</span>
+                    <span className="flex items-center gap-1"><span className="text-lg">🔊</span> Ruidos</span>
+                </div>
+            </div>
+        </section>
+
+        {/* Feature Grid (Home View Only) */}
         {!report && (
-             <section className="bg-slate-50 border-b border-gray-200 py-4 px-4 overflow-hidden">
-                <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-center gap-4 text-sm text-gray-500">
-                    <span className="font-semibold uppercase tracking-wide text-xs">Nuestra IA analiza:</span>
-                    <div className="flex flex-wrap justify-center gap-6 opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
-                        <span className="flex items-center gap-1"><span className="text-lg">📰</span> Noticias Locales</span>
-                        <span className="flex items-center gap-1"><span className="text-lg">🚓</span> Reportes Policiales</span>
-                        <span className="flex items-center gap-1"><span className="text-lg">📢</span> Redes Sociales</span>
-                        <span className="flex items-center gap-1"><span className="text-lg">🏛️</span> Datos Gubernamentales</span>
-                        <span className="flex items-center gap-1"><span className="text-lg">💬</span> Foros Vecinales</span>
-                    </div>
-                </div>
-            </section>
-        )}
-
-        {/* How it Works Section */}
-        {!showPreview && !report && (
-            <section className="py-16 px-4 bg-white">
-                <div className="max-w-5xl mx-auto">
-                    <div className="text-center mb-12">
-                         <h2 className="text-3xl font-bold text-gray-900 mb-4">¿Cómo funciona HomeRisk?</h2>
-                         <p className="text-gray-500">Inteligencia artificial aplicada a tu seguridad inmobiliaria.</p>
-                    </div>
-                    
-                    <div className="grid md:grid-cols-3 gap-8">
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 font-bold text-indigo-700">1</div>
-                            <h3 className="font-bold text-xl mb-2">Ingresa una Dirección</h3>
-                            <p className="text-gray-500 text-sm">Validamos la ubicación exacta y detectamos el barrio.</p>
-                        </div>
-                        <div className="text-center">
-                             <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 font-bold text-indigo-700">2</div>
-                            <h3 className="font-bold text-xl mb-2">Nuestra IA Escanea la Web</h3>
-                            <p className="text-gray-500 text-sm">Buscamos noticias, reportes policiales, cortes de luz y quejas en redes sociales en tiempo real.</p>
-                        </div>
-                        <div className="text-center">
-                             <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 font-bold text-indigo-700">3</div>
-                            <h3 className="font-bold text-xl mb-2">Recibe tu Reporte</h3>
-                            <p className="text-gray-500 text-sm">Obtén un score de 1 a 10 y el detalle de cada riesgo en tu correo.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        )}
-
-        {/* Feature Grid (Home View) */}
-        {!showPreview && !report && (
           <section className="py-20 px-4 max-w-7xl mx-auto">
             <div className="text-center mb-16">
                  <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Inteligencia Inmobiliaria Integral</h2>
-                 <p className="text-xl text-gray-600 max-w-2xl mx-auto">Analizamos 7 dimensiones críticas que afectan tu calidad de vida y plusvalía.</p>
+                 <p className="text-xl text-gray-600 max-w-2xl mx-auto">Analizamos 7 dimensiones críticas que afectan tu calidad de vida.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {HABITABILITY_DIMENSIONS.map((dim, idx) => (
@@ -270,162 +293,72 @@ function App() {
           </section>
         )}
 
-        {/* PREVIEW SECTION (Blurred Report) */}
-        {showPreview && !report && (
-            <div ref={previewRef} className="max-w-5xl mx-auto px-4 py-12 -mt-6">
-                <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-                    
-                    {/* Preview Header */}
-                    <div className="bg-gray-50 p-6 md:p-10 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-6">
-                         <div className="text-center md:text-left">
-                            <div className="inline-block bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2">Reporte Preliminar</div>
-                            <h2 className="text-2xl font-bold text-gray-900">Score de Habitabilidad</h2>
-                            <p className="text-gray-500">Basado en datos públicos y reportes de usuarios</p>
-                         </div>
-                         <div className="flex items-center gap-4">
-                             <div className="relative">
-                                 <svg className="w-24 h-24 transform -rotate-90">
-                                     <circle className="text-gray-200" strokeWidth="8" stroke="currentColor" fill="transparent" r="40" cx="48" cy="48" />
-                                     <circle className="text-indigo-600" strokeWidth="8" strokeDasharray={251.2} strokeDashoffset={251.2 * (1 - 7.5/10)} strokeLinecap="round" stroke="currentColor" fill="transparent" r="40" cx="48" cy="48" />
-                                 </svg>
-                                 <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center flex-col">
-                                     <span className="text-2xl font-bold text-indigo-900">7.5</span>
-                                     <span className="text-xs text-gray-400">/10</span>
-                                 </div>
-                             </div>
-                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3">
-                         {/* Fake Map */}
-                         <div className="bg-slate-100 lg:col-span-1 min-h-[300px] relative flex items-center justify-center overflow-hidden">
-                             <div className="absolute inset-0 bg-[url('https://maps.googleapis.com/maps/api/staticmap?center=-33.448890,-70.669265&zoom=14&size=600x600&scale=2&maptype=roadmap&sensor=false')] bg-cover bg-center grayscale opacity-30"></div>
-                             <div className="relative p-6 text-center">
-                                 <span className="text-4xl mb-2 block">🗺️</span>
-                                 <p className="text-gray-500 font-medium">Mapa de Incidentes</p>
-                                 <p className="text-xs text-gray-400">Visible en reporte completo</p>
-                             </div>
-                         </div>
-
-                         {/* Blurred Categories */}
-                         <div className="lg:col-span-2 p-8 relative">
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 filter blur-sm select-none pointer-events-none opacity-50">
-                                 {HABITABILITY_DIMENSIONS.slice(0, 4).map((dim, idx) => (
-                                     <div key={idx} className="border p-4 rounded-lg">
-                                         <div className="flex justify-between mb-2">
-                                             <span className="font-bold text-gray-700">{dim.title}</span>
-                                             <span className="font-bold text-gray-900">8/10</span>
-                                         </div>
-                                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                             <div className="h-full bg-gray-400 w-3/4"></div>
-                                         </div>
-                                         <p className="text-xs text-gray-500 mt-2">Detalle no disponible en vista previa...</p>
-                                     </div>
-                                 ))}
-                             </div>
-
-                             {/* Unlock Overlay (Email Form) */}
-                             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[2px] p-6">
-                                 <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full border border-indigo-50 text-center transform scale-100 transition-transform">
-                                      <h3 className="text-xl font-bold text-gray-900 mb-2">Desbloquea el Reporte Completo</h3>
-                                      <p className="text-gray-600 mb-6 text-sm">Obtén el detalle de incidentes, cortes recientes y la calidad real de servicios en tu correo.</p>
-                                      
-                                      <form onSubmit={handleSubmit} className="space-y-4">
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                              <input 
-                                                  type="text" 
-                                                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-lg"
-                                                  placeholder="Tu Nombre"
-                                                  value={name}
-                                                  onChange={(e) => setName(e.target.value)}
-                                                  required
-                                              />
-                                              <input 
-                                                  type="tel" 
-                                                  className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-lg"
-                                                  placeholder="Teléfono (+569...)"
-                                                  value={phone}
-                                                  onChange={(e) => setPhone(e.target.value)}
-                                                  required
-                                              />
-                                          </div>
-                                          <input 
-                                              type="email" 
-                                              className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border text-lg"
-                                              placeholder="tu@email.com"
-                                              value={email}
-                                              onChange={(e) => setEmail(e.target.value)}
-                                              required
-                                          />
-                                          {error && <p className="text-red-600 text-xs text-left">{error}</p>}
-                                          <button 
-                                              type="submit" 
-                                              disabled={loading}
-                                              className={`w-full py-3 px-4 rounded-lg shadow-lg text-white font-bold text-lg ${loading ? 'bg-indigo-400' : 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700'} transition-all transform active:scale-95`}
-                                          >
-                                              {loading ? "Analizando..." : "Enviar Reporte Completo Gratuito"}
-                                          </button>
-                                          <p className="text-xs text-gray-400 mt-2">🔒 Tus datos están seguros. No enviamos spam.</p>
-                                      </form>
-                                 </div>
-                             </div>
-                         </div>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* FULL REPORT VIEW (Existing Logic Polished) */}
+        {/* FULL REPORT VIEW */}
         {report && (
-            <div className="max-w-4xl mx-auto px-4 py-8 animate-fade-in">
+            <div ref={reportRef} className="max-w-4xl mx-auto px-4 py-8 animate-fade-in">
                 <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 mb-10">
-                    <div className="bg-green-50 p-8 text-center border-b border-green-100">
+                    <div className="bg-green-50 p-6 md:p-8 text-center border-b border-green-100">
                         <div className="inline-flex items-center justify-center p-3 bg-green-100 rounded-full mb-4">
                             <span className="text-3xl">✅</span>
                         </div>
-                        <h2 className="text-3xl font-bold text-gray-900 mb-2">¡Reporte Enviado!</h2>
-                        <p className="text-gray-600">Revisa tu bandeja de entrada ({email}) para ver el PDF completo.</p>
+                        <h2 className="text-3xl font-bold text-gray-900 mb-2">¡Reporte Generado!</h2>
+                        <p className="text-gray-600">Hemos enviado una copia detallada a <strong>{email}</strong>.</p>
                     </div>
                     
-                    <div className="p-8">
-                         <div className="flex items-center justify-between mb-8">
-                             <div>
-                                 <h3 className="text-xl font-bold text-gray-800">{report.location_data.address_input}</h3>
+                    <div className="p-6 md:p-8">
+                         <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
+                             <div className="text-center md:text-left">
+                                 <h3 className="text-2xl font-bold text-gray-800">{report.location_data.address_input}</h3>
                                  <p className="text-sm text-gray-500">Coordenadas: {report.location_data.geo?.lat.toFixed(4)}, {report.location_data.geo?.lng.toFixed(4)}</p>
                              </div>
-                             <div className="text-right">
-                                 <div className="text-sm text-gray-500 uppercase tracking-widest font-semibold">Score</div>
-                                 <div className="text-4xl font-black text-indigo-600">{report.risk_analysis?.overall_score}<span className="text-lg text-gray-400">/10</span></div>
+                             <div className="text-center md:text-right bg-indigo-50 px-6 py-4 rounded-xl">
+                                 <div className="text-xs text-indigo-500 uppercase tracking-widest font-bold mb-1">Risk Score</div>
+                                 <div className="text-5xl font-black text-indigo-600 leading-none">{report.risk_analysis?.overall_score}<span className="text-2xl text-indigo-300">/10</span></div>
                              </div>
                          </div>
 
-                         <div className="prose max-w-none text-gray-600 mb-8">
-                             <p>{report.risk_analysis?.summary}</p>
+                         <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 mb-8">
+                            <h4 className="font-bold text-gray-800 mb-2">Resumen Ejecutivo</h4>
+                             <p className="text-gray-600 leading-relaxed">{report.risk_analysis?.summary}</p>
                          </div>
 
-                        <h4 className="font-bold text-gray-900 mb-4 border-b pb-2">Desglose de Factores</h4>
+                        <h4 className="font-bold text-gray-900 mb-4 border-b pb-2 flex items-center gap-2">
+                            <span className="text-indigo-500">📊</span> Desglose de Factores
+                        </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* We iterate over the categories from the report */}
-                            <div className="p-4 bg-gray-50 rounded-lg">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-bold text-gray-700">⚡ Suministro Eléctrico</span>
-                                    <span className="bg-white px-2 py-1 rounded shadow-sm text-sm font-bold">{report.risk_analysis?.categories.power_supply.score}/10</span>
+                            <div className="p-5 bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="font-bold text-gray-700 flex items-center gap-2">⚡ Suministro Eléctrico</span>
+                                    <span className={`px-2 py-1 rounded text-sm font-bold ${getRiskClass(report.risk_analysis?.categories.power_supply.score || 0)}`}>
+                                        {report.risk_analysis?.categories.power_supply.score}/10
+                                    </span>
                                 </div>
                                 <p className="text-sm text-gray-500">{report.risk_analysis?.categories.power_supply.details}</p>
                             </div>
-                            <div className="p-4 bg-gray-50 rounded-lg">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-bold text-gray-700">🛡️ Seguridad</span>
-                                    <span className="bg-white px-2 py-1 rounded shadow-sm text-sm font-bold">{report.risk_analysis?.categories.security.score}/10</span>
+                            
+                            <div className="p-5 bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="font-bold text-gray-700 flex items-center gap-2">🛡️ Seguridad</span>
+                                    <span className={`px-2 py-1 rounded text-sm font-bold ${getRiskClass(report.risk_analysis?.categories.security.score || 0)}`}>
+                                        {report.risk_analysis?.categories.security.score}/10
+                                    </span>
                                 </div>
                                 <p className="text-sm text-gray-500">{report.risk_analysis?.categories.security.details}</p>
                             </div>
-                             <div className="p-4 bg-gray-50 rounded-lg">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-bold text-gray-700">🌊 Riesgos Naturales</span>
-                                    <span className="bg-white px-2 py-1 rounded shadow-sm text-sm font-bold">{report.risk_analysis?.categories.natural_events.score}/10</span>
+                            
+                             <div className="p-5 bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="font-bold text-gray-700 flex items-center gap-2">🌊 Riesgos Naturales</span>
+                                    <span className={`px-2 py-1 rounded text-sm font-bold ${getRiskClass(report.risk_analysis?.categories.natural_events.score || 0)}`}>
+                                        {report.risk_analysis?.categories.natural_events.score}/10
+                                    </span>
                                 </div>
                                 <p className="text-sm text-gray-500">{report.risk_analysis?.categories.natural_events.details}</p>
+                            </div>
+
+                            {/* Placeholder for future expansion */}
+                            <div className="p-5 bg-gray-50 border border-transparent rounded-xl flex items-center justify-center text-center">
+                                <p className="text-sm text-gray-400">Más dimensiones disponibles en versión Pro</p>
                             </div>
                         </div>
                     </div>
@@ -435,69 +368,42 @@ function App() {
 
       </main>
 
-      {/* Pricing Section (New) */}
+      {/* Pricing Section - Simplified */}
       <section id="pricing" className="py-20 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
              <div className="text-center mb-16">
-                 <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Planes diseñados para ti</h2>
-                 <p className="text-xl text-gray-600 max-w-2xl mx-auto">Ya sea que busques tu hogar ideal o gestiones múltiples propiedades.</p>
+                 <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Planes flexibles</h2>
+                 <p className="text-xl text-gray-600 max-w-2xl mx-auto">Transparencia para todos.</p>
              </div>
              
              <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                {/* Plan Personal */}
                 <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-transparent hover:border-indigo-500 transition-all duration-300">
                     <div className="p-8">
-                        <div className="text-sm font-bold text-indigo-600 uppercase tracking-wide mb-2">Para Compradores</div>
-                        <h3 className="text-3xl font-bold text-gray-900 mb-4">Personal</h3>
-                        <p className="text-gray-500 mb-6">Toma la decisión correcta y evita sorpresas.</p>
-                        <div className="flex items-baseline mb-8">
-                            <span className="text-4xl font-extrabold text-gray-900">Gratis</span>
-                            <span className="text-gray-500 ml-2">/ 1er reporte</span>
-                        </div>
+                        <div className="text-sm font-bold text-indigo-600 uppercase tracking-wide mb-2">Personal</div>
+                        <h3 className="text-3xl font-bold text-gray-900 mb-4">Gratis</h3>
+                        <p className="text-gray-500 mb-6">Ideal para evaluar tu próxima vivienda.</p>
                         <ul className="space-y-4 mb-8">
-                            <li className="flex items-center text-gray-600">
-                                <span className="mr-3 text-indigo-500">✓</span> 1 Reporte detallado de habitabilidad
-                            </li>
-                             <li className="flex items-center text-gray-600">
-                                <span className="mr-3 text-indigo-500">✓</span> Análisis de cortes y seguridad
-                            </li>
-                             <li className="flex items-center text-gray-600">
-                                <span className="mr-3 text-indigo-500">✓</span> Evaluación de entorno
-                            </li>
+                            <li className="flex items-center text-gray-600"><span className="mr-3 text-indigo-500">✓</span> 1 Reporte Completo</li>
+                            <li className="flex items-center text-gray-600"><span className="mr-3 text-indigo-500">✓</span> Envío por Email</li>
                         </ul>
-                        <button onClick={() => window.scrollTo(0,0)} className="w-full py-4 rounded-xl border-2 border-indigo-600 text-indigo-600 font-bold hover:bg-indigo-50 transition-colors">
-                            Buscar Propiedad
+                        <button onClick={resetSearch} className="w-full py-4 rounded-xl border-2 border-indigo-600 text-indigo-600 font-bold hover:bg-indigo-50 transition-colors">
+                            Buscar Ahora
                         </button>
                     </div>
                 </div>
 
-                {/* Plan Broker */}
                 <div className="bg-slate-900 text-white rounded-2xl shadow-xl overflow-hidden relative transform md:-translate-y-4">
-                     <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-500 to-purple-500 text-xs font-bold px-3 py-1 rounded-bl-lg text-white">RECOMENDADO</div>
+                     <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-500 to-purple-500 text-xs font-bold px-3 py-1 rounded-bl-lg text-white">PRO</div>
                     <div className="p-8">
-                        <div className="text-sm font-bold text-indigo-400 uppercase tracking-wide mb-2">Para Corredores</div>
-                        <h3 className="text-3xl font-bold text-white mb-4">Broker Pro</h3>
-                        <p className="text-slate-400 mb-6">Ofrece transparencia y cierra más ventas.</p>
-                        <div className="flex items-baseline mb-8">
-                            <span className="text-4xl font-extrabold text-white">UF 2.5</span>
-                            <span className="text-slate-400 ml-2">/ mes</span>
-                        </div>
+                        <div className="text-sm font-bold text-indigo-400 uppercase tracking-wide mb-2">Corredores</div>
+                        <h3 className="text-3xl font-bold text-white mb-4">UF 2.5 <span className="text-lg text-slate-400 font-normal">/ mes</span></h3>
+                        <p className="text-slate-400 mb-6">Herramientas profesionales de venta.</p>
                         <ul className="space-y-4 mb-8">
-                            <li className="flex items-center text-slate-300">
-                                <span className="mr-3 text-indigo-400">✓</span> Reportes ilimitados
-                            </li>
-                             <li className="flex items-center text-slate-300">
-                                <span className="mr-3 text-indigo-400">✓</span> Marca blanca (Tu logo)
-                            </li>
-                             <li className="flex items-center text-slate-300">
-                                <span className="mr-3 text-indigo-400">✓</span> API Access
-                            </li>
-                            <li className="flex items-center text-slate-300">
-                                <span className="mr-3 text-indigo-400">✓</span> Soporte prioritario
-                            </li>
+                            <li className="flex items-center text-slate-300"><span className="mr-3 text-indigo-400">✓</span> Reportes ilimitados</li>
+                            <li className="flex items-center text-slate-300"><span className="mr-3 text-indigo-400">✓</span> Marca blanca</li>
                         </ul>
-                        <button className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-lg hover:shadow-indigo-500/50">
-                            Empezar Prueba Gratis
+                        <button className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-lg">
+                            Prueba Gratis
                         </button>
                     </div>
                 </div>
@@ -506,7 +412,7 @@ function App() {
       </section>
 
       {/* B2B / API Section */}
-      <section className="bg-slate-900 py-20 text-white px-4">
+      <section id="api" className="bg-slate-900 py-20 text-white px-4">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
             <div>
                 <span className="text-indigo-400 font-bold tracking-wider uppercase text-xs mb-4 block">Para Inmobiliarias y Corredores</span>
@@ -557,18 +463,23 @@ function App() {
         </div>
       </section>
 
-      <footer className="bg-slate-950 py-12 border-t border-slate-900 text-center text-slate-500 text-sm">
+      <footer id="contact" className="bg-slate-950 py-12 border-t border-slate-900 text-center text-slate-500 text-sm">
         <div className="max-w-4xl mx-auto px-4">
-             <p className="mb-4">&copy; {new Date().getFullYear()} HomeRisk AI. Inteligencia de Datos Inmobiliarios.</p>
+             <p className="mb-4">&copy; {new Date().getFullYear()} HomeRisk AI.</p>
              <div className="flex justify-center gap-6">
-                 <a href="#" className="hover:text-white transition-colors">Términos</a>
-                 <a href="#" className="hover:text-white transition-colors">Privacidad</a>
-                 <a href="#" className="hover:text-white transition-colors">Contacto</a>
+                 <a href="mailto:contacto@homerisk.com" className="hover:text-white">Contacto</a>
+                 <a href="#" className="hover:text-white">Privacidad</a>
              </div>
         </div>
       </footer>
     </div>
   );
+}
+
+function getRiskClass(score: number): string {
+    if (score >= 8) return "bg-green-100 text-green-800";
+    if (score >= 5) return "bg-yellow-100 text-yellow-800";
+    return "bg-red-100 text-red-800";
 }
 
 export default App;

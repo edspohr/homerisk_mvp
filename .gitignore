@@ -6,3 +6,4 @@ lib/
 coverage
 .firebase
 node_modules_trash/
+*.tgz
