@@ -25,7 +25,7 @@ const AddressInput: React.FC<AddressInputProps & { className?: string; inputClas
   const [inputValue, setInputValue] = useState("");
   const [hasSelectedPlace, setHasSelectedPlace] = useState(false);
 
-  const apiKey = "AIzaSyBaCXbou3KwRUEJbPYxu8vhRH-SxwtPAGQ";
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
   useEffect(() => {
     if (window.google?.maps?.places) {

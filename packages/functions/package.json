@@ -17,7 +17,6 @@
     "@google-cloud/pubsub": "^4.0.0",
     "@google-cloud/vertexai": "^0.4.0",
     "@homerisk/common": "file:homerisk-common-1.0.0.tgz",
-    "@types/nodemailer": "^7.0.9",
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",
     "firebase-admin": "^11.8.0",
@@ -26,7 +25,9 @@
     "serpapi": "^2.1.0"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
+    "@types/cors": "^2.8.19",
+    "@types/node": "^25.1.0",
+    "@types/nodemailer": "^7.0.9",
     "firebase-functions-test": "^3.1.0",
     "typescript": "^5.3.3"
   },
