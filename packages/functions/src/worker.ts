@@ -15,9 +15,20 @@ const PROJECT_ID = process.env.GCP_PROJECT_ID;
 const LOCATION = process.env.VERTEX_AI_LOCATION || "us-central1";
 const MODEL_NAME = "gemini-pro";
 
+// Helper to clean address for search (remove unit numbers, etc)
+function cleanAddressForSearch(address: string): string {
+  // Regex to remove "Depto", "Oficina", "Piso" and subsequent text, or just keep street + number
+  // Simple heuristic: Take everything before the first comma, or just use as is if no comma.
+  // User suggestion: "Use only street and number".
+  // Often addresses are "Street 123, City".
+  // Let's try to remove common unit prefixes if present.
+  return address.replace(/,?\s*(depto|dept|dpto|oficina|of|piso|casa|block)\s*.*$/i, "").trim();
+}
+
 async function searchAddressRisks(address: string, neighborhood?: string) {
   // Use neighborhood for broader search context if available
-  const context = neighborhood ? `${neighborhood}, ${address}` : address;
+  const cleanAddr = cleanAddressForSearch(address);
+  const context = neighborhood ? `${neighborhood}, ${cleanAddr}` : cleanAddr;
   const queries = [
     `Cortes de luz ${context} problemas electricos`,
     `Inundaciones anegamientos ${context} historial lluvia`,
@@ -95,8 +106,12 @@ async function analyzeRisksWithGemini(
     const text = response.candidates?.[0].content.parts[0].text;
     
     if (text) {
-        const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim();
-        return JSON.parse(jsonStr) as RiskAnalysis;
+        // Robust JSON extraction using Regex suitable for multiline JSON
+        // Looks for the first { and last }
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+             return JSON.parse(jsonMatch[0]) as RiskAnalysis;
+        }
     }
     return null;
   } catch (error) {
@@ -109,7 +124,10 @@ async function analyzeRisksWithGemini(
 import { onMessagePublished } from "firebase-functions/v2/pubsub";
 
 // Force deploy check
-export const worker = onMessagePublished("analysis-requests", async (event) => {
+export const worker = onMessagePublished({
+    topic: "analysis-requests",
+    secrets: ["SERPAPI_KEY", "GCP_PROJECT_ID"]
+}, async (event) => {
   // In v2, event.data is the PubSub message object
   const message = event.data.message;
   // .json helper might not exist directly on V2 message, usually it is just .json if compiled correctly or we parse .data string.
@@ -146,7 +164,12 @@ export const worker = onMessagePublished("analysis-requests", async (event) => {
     const neighborhood = docData?.location_data?.neighborhood || "";
 
     let analysis: RiskAnalysis | null = null;
-    let useMock = !process.env.SERPAPI_KEY || process.env.SERPAPI_KEY === "placeholder" || !process.env.GCP_PROJECT_ID;
+    // Check for secrets or env vars.
+    // In V2 with secrets, process.env.SERPAPI_KEY should be populated if secret is set.
+    const serpKey = process.env.SERPAPI_KEY;
+    const gcpProject = process.env.GCP_PROJECT_ID;
+    
+    let useMock = !serpKey || serpKey === "placeholder" || !gcpProject;
 
     if (!useMock) {
         try {

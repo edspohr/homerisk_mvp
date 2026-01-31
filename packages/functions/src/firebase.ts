@@ -12,8 +12,11 @@ export const REPORTS_COLLECTION = "reports";
 export const ANALYSIS_TOPIC = "analysis-requests";
 
 // Helper to sanitize/normalize address for ID generation
-export function generateJobId(address: string): string {
+export function generateJobId(lat: number, lng: number): string {
   const crypto = require('crypto');
-  const normalized = address.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
-  return crypto.createHash('md5').update(normalized).digest('hex');
+  // Truncate to 4 decimal places (approx 11m precision) to group neighbors
+  const latKey = lat.toFixed(4);
+  const lngKey = lng.toFixed(4);
+  const key = `${latKey},${lngKey}`;
+  return crypto.createHash('md5').update(key).digest('hex');
 }

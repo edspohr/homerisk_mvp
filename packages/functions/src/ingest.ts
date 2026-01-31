@@ -21,7 +21,7 @@ export const ingest = onRequest(async (req, res) => {
         return;
       }
 
-      const jobId = generateJobId(address);
+      const jobId = generateJobId(location.lat, location.lng);
       const reportRef = db.collection(REPORTS_COLLECTION).doc(jobId);
       const doc = await reportRef.get();
 
