@@ -293,6 +293,49 @@ function App() {
           </section>
         )}
 
+        {/* How it Works Section */}
+        {!report && (
+            <section className="py-20 px-4 bg-white border-t border-gray-100">
+                <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-16">
+                        <span className="text-indigo-600 font-bold uppercase tracking-wider text-sm mb-2 block">Proceso Simple</span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900">¿Cómo funciona HomeRisk?</h2>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-3 gap-12 relative">
+                        {/* Connecting Line (Desktop) */}
+                        <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gray-100 -z-10"></div>
+
+                        {[
+                            { 
+                                icon: "📍", 
+                                title: "1. Ingresa la dirección", 
+                                desc: "Busca la propiedad que te interesa evaluar. Nuestra base de datos cubre gran parte de la ciudad." 
+                            },
+                            { 
+                                icon: "🧠", 
+                                title: "2. Nuestra IA analiza", 
+                                desc: "Cruzamos datos de delincuencia, cortes de luz, plusvalía y más de 10 fuentes oficiales en segundos." 
+                            },
+                            { 
+                                icon: "✅", 
+                                title: "3. Toma decisiones", 
+                                desc: "Recibe un informe detallado con un Risk Score claro. Decide con información real, no con intuición." 
+                            }
+                        ].map((step, i) => (
+                            <div key={i} className="flex flex-col items-center text-center group">
+                                <div className="w-24 h-24 bg-white border-4 border-indigo-50 rounded-full flex items-center justify-center text-4xl shadow-lg mb-6 group-hover:scale-110 group-hover:border-indigo-100 transition-all duration-300 relative z-10">
+                                    {step.icon}
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
+                                <p className="text-gray-500 leading-relaxed px-4">{step.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+        )}
+
         {/* FULL REPORT VIEW */}
         {report && (
             <div ref={reportRef} className="max-w-4xl mx-auto px-4 py-8 animate-fade-in">

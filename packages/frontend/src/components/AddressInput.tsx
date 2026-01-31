@@ -28,21 +28,43 @@ const AddressInput: React.FC<AddressInputProps & { className?: string; inputClas
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
   useEffect(() => {
+    // Check if script is already present or loaded
     if (window.google?.maps?.places) {
+      console.log("Google Maps JS API already loaded.");
       setScriptLoaded(true);
       return;
     }
+    
     const existingScript = document.getElementById("google-maps-script");
     if (!existingScript) {
+      console.log("Injecting Google Maps Script...");
       const script = document.createElement("script");
       script.id = "google-maps-script";
+      // Legacy loading without 'loading=async' to ensure libraries are loaded with the main script if possible,
+      // or at least available via global namespace checks.
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
       script.async = true;
-      script.onload = () => setScriptLoaded(true);
-      script.onerror = () => console.warn("Google Maps script failed to load");
-      document.body.appendChild(script);
+      script.defer = true;
+      script.onload = () => {
+         console.log("Google Maps Script loaded successfully.");
+         setScriptLoaded(true);
+      };
+      script.onerror = (e) => console.error("Google Maps script failed to load:", e);
+      document.head.appendChild(script);
     } else {
-      setScriptLoaded(true);
+      console.log("Google Maps Script already exists in DOM.");
+      if (window.google?.maps?.places) {
+          setScriptLoaded(true);
+      } else {
+          // Poll for it
+          const checkGoogle = setInterval(() => {
+              if (window.google?.maps?.places) {
+                  console.log("Google Maps object detected via polling.");
+                  setScriptLoaded(true);
+                  clearInterval(checkGoogle);
+              }
+          }, 100);
+      }
     }
   }, [apiKey]);
 
@@ -54,44 +76,67 @@ const AddressInput: React.FC<AddressInputProps & { className?: string; inputClas
   const autocompleteInstance = useRef<any>(null);
 
   useEffect(() => {
-    if (scriptLoaded && inputRef.current && !autocompleteInstance.current && window.google?.maps?.places) {
-      try {
-        const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-          types: ["geocode"],
-          componentRestrictions: { country: "cl" }, 
-          fields: ["formatted_address", "geometry", "address_components"],
-        });
+    if (!scriptLoaded || !inputRef.current || autocompleteInstance.current) return;
 
-        autocompleteInstance.current = autocomplete;
+    const initialize = () => {
+        if (!window.google?.maps?.places) {
+            console.log("Waiting for window.google.maps.places...");
+            return;
+        }
 
-        const listener = autocomplete.addListener("place_changed", () => {
-          const place = autocomplete.getPlace();
-          if (place.geometry && place.geometry.location) {
-            let neighborhood = "";
-            if (place.address_components) {
-              const findComponent = (type: string) => place.address_components.find((c: any) => c.types.includes(type));
-              const nbComponent = findComponent("neighborhood") || findComponent("sublocality") || findComponent("administrative_area_level_2");
-              if (nbComponent) neighborhood = nbComponent.long_name;
+        try {
+            console.log("Initializing Autocomplete (Legacy Mode) on:", inputRef.current);
+            const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+                types: ["geocode"],
+                componentRestrictions: { country: "cl" },
+                fields: ["formatted_address", "geometry", "address_components"],
+            });
+
+            autocompleteInstance.current = autocomplete;
+            console.log("Autocomplete instance created:", autocomplete);
+
+            const listener = autocomplete.addListener("place_changed", () => {
+                const place = autocomplete.getPlace();
+                console.log("Place selected:", place);
+
+                if (place.geometry && place.geometry.location) {
+                    let neighborhood = "";
+                    if (place.address_components) {
+                        const findComponent = (type: string) => place.address_components.find((c: any) => c.types.includes(type));
+                        const nbComponent = findComponent("neighborhood") || findComponent("sublocality") || findComponent("administrative_area_level_2");
+                        if (nbComponent) neighborhood = nbComponent.long_name;
+                    }
+                    setHasSelectedPlace(true);
+                    if (onAddressSelectRef.current) {
+                        onAddressSelectRef.current(place.formatted_address || "", {
+                            lat: place.geometry.location.lat(),
+                            lng: place.geometry.location.lng(),
+                        }, neighborhood);
+                    }
+                }
+            });
+            
+            // Note: Cleaner cleanup would happen here but since we use a ref for instance,
+            // we rely on garbage collection or manual cleanup on unmount if strictly needed.
+            // But the listener is attached to the instance.
+        } catch (error) {
+            console.error("Error initializing Autocomplete:", error);
+        }
+    };
+
+    // Retry loop just in case scriptLoaded is true but places isn't quite there (race condition)
+    if (window.google?.maps?.places) {
+        initialize();
+    } else {
+        const interval = setInterval(() => {
+            if (window.google?.maps?.places) {
+                clearInterval(interval);
+                initialize();
             }
-            setHasSelectedPlace(true);
-            if (onAddressSelectRef.current) {
-              onAddressSelectRef.current(place.formatted_address || "", {
-                lat: place.geometry.location.lat(),
-                lng: place.geometry.location.lng(),
-              }, neighborhood);
-            }
-          }
-        });
-        
-        return () => {
-          if (window.google?.maps?.event) {
-            window.google.maps.event.removeListener(listener);
-          }
-        };
-      } catch (e) {
-        console.warn("Google Maps Autocomplete initialization failed:", e);
-      }
+        }, 100);
+        return () => clearInterval(interval);
     }
+
   }, [scriptLoaded]); 
 
   // Handle input changes
