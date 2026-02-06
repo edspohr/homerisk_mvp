@@ -95,7 +95,9 @@ const AddressInput: React.FC<AddressInputProps & { className?: string; inputClas
             autocompleteInstance.current = autocomplete;
             console.log("Autocomplete instance created:", autocomplete);
 
-            const listener = autocomplete.addListener("place_changed", () => {
+
+            autocomplete.addListener("place_changed", () => {
+
                 const place = autocomplete.getPlace();
                 console.log("Place selected:", place);
 

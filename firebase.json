@@ -21,20 +21,12 @@
       "**/.*",
       "**/node_modules/**"
     ],
+
     "rewrites": [
+
       {
         "source": "/api/submit-analysis",
-        "run": {
-          "serviceId": "ingest",
-          "region": "us-central1"
-        }
-      },
-      {
-        "source": "/api/report/**",
-        "run": {
-          "serviceId": "read",
-          "region": "us-central1"
-        }
+        "function": "submitAnalysis"
       },
       {
         "source": "**",
