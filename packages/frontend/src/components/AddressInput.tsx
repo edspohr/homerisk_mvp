@@ -109,6 +109,7 @@ const AddressInput: React.FC<AddressInputProps & { className?: string; inputClas
                         if (nbComponent) neighborhood = nbComponent.long_name;
                     }
                     setHasSelectedPlace(true);
+                    setInputValue(place.formatted_address || "");
                     if (onAddressSelectRef.current) {
                         onAddressSelectRef.current(place.formatted_address || "", {
                             lat: place.geometry.location.lat(),

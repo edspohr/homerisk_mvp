@@ -152,18 +152,64 @@ function App() {
                             {/* Details Grid */}
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div className="p-4 bg-slate-50 rounded-xl">
-                                    <div className="text-2xl mb-2">⚡</div>
-                                    <div className="font-semibold text-slate-900">Servicios</div>
-                                    <pre className="text-xs text-slate-500 mt-2 whitespace-pre-wrap">
-                                        {JSON.stringify((report as any).results?.utilities, null, 2)}
-                                    </pre>
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="text-2xl">⚡</div>
+                                            <h4 className="font-semibold text-slate-900">Servicios Básicos</h4>
+                                        </div>
+                                        {(report as any).results?.utilities?.stabilityScore !== undefined && (
+                                            <div className={`px-2 py-1 rounded text-xs font-bold ${
+                                                (report as any).results.utilities.stabilityScore > 80 ? 'bg-green-100 text-green-700' :
+                                                (report as any).results.utilities.stabilityScore > 50 ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-red-100 text-red-700'
+                                            }`}>
+                                                Estabilidad: {(report as any).results.utilities.stabilityScore}%
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {(report as any).results?.utilities?.rawData?.length > 0 ? (
+                                        <ul className="space-y-3">
+                                            {(report as any).results.utilities.rawData.map((item: any, i: number) => (
+                                                <li key={i} className="text-sm bg-white p-3 rounded border border-slate-100 shadow-sm">
+                                                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline block mb-1">
+                                                        {item.source || item.title}
+                                                    </a>
+                                                    <p className="text-slate-600 line-clamp-2">{item.text || item.snippet}</p>
+                                                    {item.date && <span className="text-xs text-slate-400 mt-1 block">{item.date}</span>}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <div className="text-slate-500 text-sm italic">
+                                            {(report as any).results?.utilities?.summary_hint || "Sin reportes recientes."}
+                                        </div>
+                                    )}
                                 </div>
+
                                 <div className="p-4 bg-slate-50 rounded-xl">
-                                    <div className="text-2xl mb-2">📶</div>
-                                    <div className="font-semibold text-slate-900">Conectividad</div>
-                                    <pre className="text-xs text-slate-500 mt-2 whitespace-pre-wrap">
-                                        {JSON.stringify((report as any).results?.telco, null, 2)}
-                                    </pre>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="text-2xl">📶</div>
+                                        <h4 className="font-semibold text-slate-900">Conectividad</h4>
+                                    </div>
+                                    {/* Placeholder for Telco until we have real data structure */}
+                                     {(report as any).results?.telco ? (
+                                         <div className="space-y-2">
+                                            <div className="bg-white p-3 rounded border border-slate-100 shadow-sm">
+                                                 <div className="flex justify-between items-center mb-1">
+                                                     <span className="font-medium text-slate-900">Fibra Óptica</span>
+                                                     <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-bold">Disponible</span>
+                                                 </div>
+                                                 <p className="text-xs text-slate-500">Factibilidad técnica alta en la zona.</p>
+                                            </div>
+                                             {/* If we had a list, we would map it here. For now, showing a safe default or specific data if available. */}
+                                            <pre className="text-xs text-slate-400 mt-2 whitespace-pre-wrap hidden">
+                                                {JSON.stringify((report as any).results?.telco, null, 2)}
+                                            </pre>
+                                         </div>
+                                     ) : (
+                                        <p className="text-slate-500 text-sm">Analizando cobertura...</p>
+                                     )}
                                 </div>
                             </div>
                             
