@@ -24,6 +24,11 @@
 
     "rewrites": [
 
+
+      {
+        "source": "/api/report/**",
+        "function": "read"
+      },
       {
         "source": "/api/submit-analysis",
         "function": "submitAnalysis"

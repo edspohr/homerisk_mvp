@@ -19,8 +19,8 @@
     "@homerisk/common": "file:homerisk-common-1.0.0.tgz",
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",
-    "firebase-admin": "^11.8.0",
-    "firebase-functions": "^6.0.0",
+    "firebase-admin": "^13.6.1",
+    "firebase-functions": "^7.0.5",
     "nodemailer": "^7.0.13",
     "serpapi": "^2.1.0"
   },

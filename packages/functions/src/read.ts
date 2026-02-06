@@ -1,6 +1,8 @@
 import { onRequest } from "firebase-functions/v2/https";
 import cors from "cors";
-import { db, REPORTS_COLLECTION } from "./firebase";
+
+import { db } from "./firebase";
+
 import { RiskReport } from "@homerisk/common";
 
 const corsHandler = cors({ origin: ["http://localhost:5173", "https://homerisk-fb567.web.app"] });
@@ -23,7 +25,9 @@ export const read = onRequest(async (req, res) => {
         return;
       }
 
-      const reportRef = db.collection(REPORTS_COLLECTION).doc(finalId);
+
+      const reportRef = db.collection("analysis").doc(finalId);
+
       const doc = await reportRef.get();
 
       if (!doc.exists) {
