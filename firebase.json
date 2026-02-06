@@ -21,17 +21,14 @@
       "**/.*",
       "**/node_modules/**"
     ],
-
     "rewrites": [
-
-
-      {
-        "source": "/api/report/**",
-        "function": "read"
-      },
       {
         "source": "/api/submit-analysis",
         "function": "submitAnalysis"
+      },
+      {
+        "source": "/api/report/**",
+        "function": "read"
       },
       {
         "source": "**",

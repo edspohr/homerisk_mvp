@@ -1,11 +1,14 @@
 import { onRequest } from "firebase-functions/v2/https";
 import cors from "cors";
-
-import { db } from "./firebase";
-
+import * as admin from "firebase-admin";
 import { RiskReport } from "@homerisk/common";
 
-const corsHandler = cors({ origin: ["http://localhost:5173", "https://homerisk-fb567.web.app"] });
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const db = admin.firestore();
+const corsHandler = cors({ origin: true });
 
 export const read = onRequest(async (req, res) => {
   corsHandler(req, res, async () => {
@@ -15,9 +18,9 @@ export const read = onRequest(async (req, res) => {
         return;
       }
 
+      // Supports both query param and path param via rewrites
       const jobId = req.query.job_id as string;
-      const pathJobId = req.path.split("/").pop(); // Support /report/{job_id} style if strictly rewritten, else use query param
-
+      const pathJobId = req.path.split("/").pop();
       const finalId = jobId || pathJobId;
 
       if (!finalId) {
@@ -25,9 +28,8 @@ export const read = onRequest(async (req, res) => {
         return;
       }
 
-
+      // CRITICAL FIX: Pointing to 'analysis' collection, not 'reports'
       const reportRef = db.collection("analysis").doc(finalId);
-
       const doc = await reportRef.get();
 
       if (!doc.exists) {
@@ -35,6 +37,8 @@ export const read = onRequest(async (req, res) => {
         return;
       }
 
+
+      // Cast to generic or specific type
       const data = doc.data() as RiskReport;
       res.status(200).json(data);
 
