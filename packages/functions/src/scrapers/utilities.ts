@@ -13,7 +13,8 @@ if (!admin.apps.length) {
 export const scanUtilities = onMessagePublished({
     topic: "scan-utilities",
     memory: "1GiB",
-    timeoutSeconds: 120
+    timeoutSeconds: 120,
+    secrets: ["SERPAPI_KEY"]
 }, async (event) => {
 
     const { address, scanId } = event.data.message.json;
