@@ -8,6 +8,8 @@ if (!admin.apps.length) {
 }
 
 
+
+// Re-trigger deploy for secrets update
 export const scanUtilities = onMessagePublished({
     topic: "scan-utilities",
     memory: "1GiB",
